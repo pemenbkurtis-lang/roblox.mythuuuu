@@ -1,8 +1,4 @@
---[[
-    OPTIMIZED CONTINUOUS FLING
-    Removes the "Return to Pos" delay for a smoother, faster loop.
-]]
- 
+
 local Targets = {"All"} 
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -63,4 +59,5 @@ task.spawn(function()
         end
         task.wait() -- Minimal delay to prevent engine crash
     end
+
 end)
