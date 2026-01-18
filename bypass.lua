@@ -1,4 +1,4 @@
--- [[ TEXTCHAT SERVICE BYPASS HOOK ]] --
+-- [[ TEXTCHAT SERVICE BYPASS HOOK FOR XENO ]] --
 
 local TextChatService = game:GetService("TextChatService")
 
@@ -34,27 +34,6 @@ local function ConvertBypass(Text)
     return table.concat(New, " ")
 end
 
--- Hook TextChatService SendAsync
-local RawMetatable = getrawmetatable(game)
-local OldNamecall = RawMetatable.__namecall
-setreadonly(RawMetatable, false)
-
-RawMetatable.__namecall = newcclosure(function(Self, ...)
-    local Method = getnamecallmethod()
-    local Args = {...}
-
-    -- Intercept SendAsync calls to TextChannels
-    if Method == "SendAsync" and Self:IsA("TextChannel") then
-        local OriginalMessage = Args[1]
-        if type(OriginalMessage) == "string" then
-            Args[1] = ConvertBypass(OriginalMessage)
-        end
-        return OldNamecall(Self, unpack(Args))
-    end
-
-    return OldNamecall(Self, ...)
-end)
-
-setreadonly(RawMetatable, true)
-
-print("TextChat Bypass Hook Loaded.")
+-- Try hookmetamethod first (Xeno supports this)
+local OldNamecall
+OldNamecall = hoo
