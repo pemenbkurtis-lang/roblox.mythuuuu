@@ -22,6 +22,8 @@ end
 
 local Special = utf8.char(0x060D)
 local function ConvertBypass(Text)
+    if type(Text) ~= "string" then return Text end
+    
     local Reverse = utf8_reverse(Text)
     local New = {}
 
@@ -34,53 +36,73 @@ local function ConvertBypass(Text)
     return table.concat(New, " ")
 end
 
--- Hook method for Xeno
-local success, OldNamecall = pcall(function()
-    return hookmetamethod(game, "__namecall", function(Self, ...)
-        local Args = {...}
-        local Method = getnamecallmethod()
-        
-        -- Hook SendAsync for TextChannel
-        if Method == "SendAsync" and Self:IsA("TextChannel") then
-            if type(Args[1]) == "string" then
-                Args[1] = ConvertBypass(Args[1])
-            end
-        end
-        
-        return OldNamecall(Self, unpack(Args))
-    end)
-end)
+-- Store original functions globally so bot can't bypass
+getgenv().OriginalSendAsync = {}
 
-if not success then
-    warn("[BYPASS] Failed to hook: " .. tostring(OldNamecall))
-    
-    -- Fallback: Try hooking the TextChannel directly
-    local TextChannels = TextChatService:WaitForChild("TextChannels")
-    
-    for _, channel in pairs(TextChannels:GetChildren()) do
-        if channel:IsA("TextChannel") then
-            local OldSend = channel.SendAsync
-            channel.SendAsync = function(self, message)
-                if type(message) == "string" then
-                    message = ConvertBypass(message)
-                end
-                return OldSend(self, message)
+-- Hook all existing TextChannels IMMEDIATELY
+local TextChannels = TextChatService:WaitForChild("TextChannels")
+
+local function HookChannel(channel)
+    if channel:IsA("TextChannel") and not getgenv().OriginalSendAsync[channel] then
+        -- Store original
+        getgenv().OriginalSendAsync[channel] = channel.SendAsync
+        
+        -- Replace with bypass version
+        channel.SendAsync = function(self, message, ...)
+            if type(message) == "string" then
+                message = ConvertBypass(message)
+                print("[BYPASS] Converted:", message)
             end
+            return getgenv().OriginalSendAsync[channel](self, message, ...)
+        end
+    end
+end
+
+-- Hook existing channels
+for _, channel in pairs(TextChannels:GetChildren()) do
+    HookChannel(channel)
+end
+
+-- Hook new channels
+TextChannels.ChildAdded:Connect(HookChannel)
+
+-- ALSO hook metamethod as backup
+local OldNamecall
+OldNamecall = hookmetamethod(game, "__namecall", function(Self, ...)
+    local Args = {...}
+    local Method = getnamecallmethod()
+    
+    if Method == "SendAsync" and Self:IsA("TextChannel") then
+        if type(Args[1]) == "string" then
+            Args[1] = ConvertBypass(Args[1])
+            print("[BYPASS META] Converted:", Args[1])
         end
     end
     
-    TextChannels.ChildAdded:Connect(function(channel)
-        if channel:IsA("TextChannel") then
-            task.wait(0.1)
-            local OldSend = channel.SendAsync
-            channel.SendAsync = function(self, message)
-                if type(message) == "string" then
-                    message = ConvertBypass(message)
+    return OldNamecall(Self, unpack(Args))
+end)
+
+-- NUCLEAR OPTION: Hook the table itself
+local RBXGeneral = TextChannels:FindFirstChild("RBXGeneral")
+if RBXGeneral then
+    local mt = getrawmetatable(RBXGeneral)
+    setreadonly(mt, false)
+    
+    local old = mt.__index
+    mt.__index = newcclosure(function(t, k)
+        if k == "SendAsync" and t:IsA("TextChannel") then
+            return function(self, msg, ...)
+                if type(msg) == "string" then
+                    msg = ConvertBypass(msg)
+                    print("[BYPASS INDEX] Converted:", msg)
                 end
-                return OldSend(self, message)
+                return getgenv().OriginalSendAsync[self](self, msg, ...)
             end
         end
+        return old(t, k)
     end)
+    
+    setreadonly(mt, true)
 end
 
-print("[BYPASS] TextChat bypass loaded successfully")
+print("[BYPASS] All hooks loaded - messages will be converted")
