@@ -3,9 +3,8 @@ local function runAFK()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 end
 
--- 2. Bypass & Configuration
+-- 2. Bypass & Configuration Logic
 local function runBypass()
-    -- This logic "scrambles" the text so the bot sends bypassed messages
     local SpecialCharacter = utf8.char(0x060D)
     local function utf8_chars(str)
         local chars = {}
@@ -30,43 +29,40 @@ local function runBypass()
     end
 
     local Raw = {
-        "Join for CP/pfYQ9rtdcy",
-        "If you want to see a expose of Kiceba then join /pfYQ9rtdcy",
-        "THIS GAME IS OWNED BY NIGGERS /pfYQ9rtdcy",
-        "/pfYQ9rtdcy. Bots run by YBRATS",
-        "JOIN 4 CP /pfYQ9rtdcy",
-        "KIDS CUT WRISTS FOR US /pfYQ9rtdcy",
-        "Draw blood for US /pfYQ9rtdcy",
-        "I hope your hiatus was fun /pfYQ9rtdcy",
-        "Baptize Me /pfYQ9rtdcy",
-        "KICEBA LIKES CHILDREN /pfYQ9rtdcy",
-        "JOIN UP /pfYQ9rtdcy",
-        "JOIN PLS /pfYQ9rtdcy"
+        "Join for CP/pfYQ9rtdcy", "If you want to see a expose of Kiceba then join /pfYQ9rtdcy",
+        "THIS GAME IS OWNED BY NIGGERS /pfYQ9rtdcy", "/pfYQ9rtdcy. Bots run by YBRATS",
+        "JOIN 4 CP /pfYQ9rtdcy", "KIDS CUT WRISTS FOR US /pfYQ9rtdcy",
+        "Draw blood for US /pfYQ9rtdcy", "I hope your hiatus was fun /pfYQ9rtdcy",
+        "Baptize Me /pfYQ9rtdcy", "KICEBA LIKES CHILDREN /pfYQ9rtdcy",
+        "JOIN UP /pfYQ9rtdcy", "JOIN PLS /pfYQ9rtdcy"
     }
 
     local Bypassed = {}
     for _, v in ipairs(Raw) do table.insert(Bypassed, Convert(v)) end
 
-    -- This passes the scrambled phrases to the loadstrings below
-    getgenv().BotConfig = { DefaultPhrases = { Bypassed } }
+    -- Structure for the Bot.lua
+    getgenv().BotConfig = { 
+        DefaultPhrases = Bypassed,
+        WaitTime = 10 -- Force a 10-second delay between messages
+    }
     getgenv().Blacklist = { blacklistt = {{}} }
     
-    -- Keep the bypass loadstring here
     loadstring(game:HttpGet("https://raw.githubusercontent.com/pemenbkurtis-lang/roblox.mythuuuu/refs/heads/main/bypass.lua"))()
 end
 
--- 3. The Features (All as loadstrings)
+-- 3. Features
 local function runFeatures()
+    -- Load the Bot first
     loadstring(game:HttpGet("https://raw.githubusercontent.com/pemenbkurtis-lang/roblox.mythuuuu/refs/heads/main/Bot.lua"))()
+    
+    -- WAIT 5 seconds before loading Fling to let the Bot settle
+    task.wait(5)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/pemenbkurtis-lang/roblox.mythuuuu/refs/heads/main/Fling.lua"))()
 end
 
--- Execution
+-- Execution Sequence
 task.spawn(runBypass)
-task.wait(1)
+task.wait(2) -- Give the bypass extra time to hook
 task.spawn(runAFK)
+task.wait(1)
 task.spawn(runFeatures)
-
--- Run immediately
-
-task.spawn(InitializeBypass)
