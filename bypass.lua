@@ -1,5 +1,9 @@
--- [[ UPDATED HOOK FOR SCRIPT-GENERATED MESSAGES ]] --
+-- [[ LEGACY CHAT BYPASS HOOK ]] --
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SayMessageRequest = ReplicatedStorage:FindFirstChild("SayMessageRequest", true)
+
+-- Utility functions from your original script
 local function utf8_chars(str)
     local chars = {}
     for _, c in utf8.codes(str) do
@@ -31,7 +35,7 @@ local function ConvertBypass(Text)
     return table.concat(New, " ")
 end
 
--- Hooking the actual internal Service instead of the TextBox
+-- Hook the RemoteEvent to intercept ALL script-sent messages
 local RawMetatable = getrawmetatable(game)
 local OldNamecall = RawMetatable.__namecall
 setreadonly(RawMetatable, false)
@@ -40,10 +44,12 @@ RawMetatable.__namecall = newcclosure(function(Self, ...)
     local Method = getnamecallmethod()
     local Args = {...}
 
-    -- Check if a script is trying to call SendAsync on a TextChannel
-    if not checkcaller() and Method == "SendAsync" and Self.ClassName == "TextChannel" then
+    -- Intercept FireServer calls to the chat remote
+    if Method == "FireServer" and Self == SayMessageRequest then
         local OriginalMessage = Args[1]
-        Args[1] = ConvertBypass(OriginalMessage) -- Apply the bypass
+        if type(OriginalMessage) == "string" then
+            Args[1] = ConvertBypass(OriginalMessage) -- Apply the conversion
+        end
         return OldNamecall(Self, unpack(Args))
     end
 
@@ -51,3 +57,5 @@ RawMetatable.__namecall = newcclosure(function(Self, ...)
 end)
 
 setreadonly(RawMetatable, true)
+
+print("Legacy Chat Hook Loaded.")
