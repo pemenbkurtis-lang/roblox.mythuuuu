@@ -1,8 +1,17 @@
--- [[ TEXTCHAT SERVICE BYPASS HOOK FOR XENO ]] --
-
 local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
--- Utility functions
+-- Configuration
+local SpecialCharacter = utf8.char(0x060D) -- The character used to break up text
+
+local function SendChatMessage(Message)
+    local Channel = TextChatService:FindFirstChild("RBXGeneral", true)
+    if Channel then
+        Channel:SendAsync(Message)
+    end
+end
+
 local function utf8_chars(str)
     local chars = {}
     for _, c in utf8.codes(str) do
@@ -20,39 +29,44 @@ local function utf8_reverse(str)
     return table.concat(rev)
 end
 
-local Special = utf8.char(0x060D)
+-- The logic that reverses and injects invisible characters
 local function ConvertBypass(Text)
-    if type(Text) ~= "string" then return Text end
-    
     local Reverse = utf8_reverse(Text)
     local New = {}
 
     for Word in Reverse:gmatch("%S+") do
         local Letters = utf8_chars(Word)
-        local Fill = Special .. table.concat(Letters, Special)
+        local Fill = SpecialCharacter .. table.concat(Letters, SpecialCharacter)
         table.insert(New, Fill)
     end
 
     return table.concat(New, " ")
 end
 
--- Wait for services
-local TextChannels = TextChatService:WaitForChild("TextChannels")
-local RBXGeneral = TextChannels:WaitForChild("RBXGeneral")
+-- Automatic Hook into the Chat Box
+local function InitializeBypass()
+    local ExpChat = CoreGui:WaitForChild("ExperienceChat", 10)
+    if not ExpChat then return end
 
--- Store original if not already stored
-if not getgenv().OriginalSendAsync then
-    getgenv().OriginalSendAsync = RBXGeneral.SendAsync
+    local Box = ExpChat:FindFirstChild("TextBox", true)
+    if not Box then return end
+
+    Box.MultiLine = true -- Allows for processing before sending
+
+    UserInputService.InputBegan:Connect(function(Input, Processed)
+        if Input.KeyCode == Enum.KeyCode.Return and Box:IsFocused() then
+            local RawText = Box.Text:gsub("%s+$", "")
+            
+            if RawText:match("%S") then
+                Box.Text = "" -- Clear the box
+                Box:ReleaseFocus()
+                
+                local ProcessedText = ConvertBypass(RawText)
+                SendChatMessage(ProcessedText)
+            end
+        end
+    end)
 end
 
--- Hook SendAsync
-RBXGeneral.SendAsync = newcclosure(function(self, message, ...)
-    if type(message) == "string" then
-        local converted = ConvertBypass(message)
-        print("[BYPASS] " .. message .. " → " .. converted)
-        return getgenv().OriginalSendAsync(self, converted, ...)
-    end
-    return getgenv().OriginalSendAsync(self, message, ...)
-end)
-
-print("[✓] Chat bypass loaded successfully")
+-- Run immediately
+task.spawn(InitializeBypass)
