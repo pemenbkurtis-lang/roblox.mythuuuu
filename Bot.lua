@@ -1,57 +1,7 @@
 -- Gui to Lua
 -- Version: 3.2
--- With Built-in Chat Bypass
 
--- [[ CHAT BYPASS FUNCTIONS ]] --
-local function utf8_chars(str)
-    local chars = {}
-    for _, c in utf8.codes(str) do
-        table.insert(chars, utf8.char(c))
-    end
-    return chars
-end
-
-local function utf8_reverse(str)
-    local chars = utf8_chars(str)
-    local rev = {}
-    for i = #chars, 1, -1 do
-        table.insert(rev, chars[i])
-    end
-    return table.concat(rev)
-end
-
-local Special = utf8.char(0x060D)
-local function ConvertBypass(Text)
-    local Reverse = utf8_reverse(Text)
-    local New = {}
-    for Word in Reverse:gmatch("%S+") do
-        local Letters = utf8_chars(Word)
-        local Fill = Special .. table.concat(Letters, Special)
-        table.insert(New, Fill)
-    end
-    return table.concat(New, " ")
-end
-
--- Hooking the actual internal Service instead of the TextBox
-local RawMetatable = getrawmetatable(game)
-local OldNamecall = RawMetatable.__namecall
-setreadonly(RawMetatable, false)
-RawMetatable.__namecall = newcclosure(function(Self, ...)
-    local Method = getnamecallmethod()
-    local Args = {...}
-    -- Check if a script is trying to call SendAsync on a TextChannel
-    if not checkcaller() and Method == "SendAsync" and Self.ClassName == "TextChannel" then
-        local OriginalMessage = Args[1]
-        Args[1] = ConvertBypass(OriginalMessage) -- Apply the bypass
-        return OldNamecall(Self, unpack(Args))
-    end
-    return OldNamecall(Self, ...)
-end)
-setreadonly(RawMetatable, true)
-
-print("[Chat Bypass] Loaded - All bot messages will be bypassed")
-
--- [[ GUI INSTANCES ]] --
+-- Instances:
 
 local botscript = Instance.new("ScreenGui")
 local StartButton = Instance.new("TextButton")
