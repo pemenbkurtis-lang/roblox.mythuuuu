@@ -36,39 +36,55 @@ local function ConvertBypass(Text)
     return table.concat(New, " ")
 end
 
--- Get the TextChannels folder
+-- Store in global environment so it persists
+getgenv().BypassEnabled = true
+
+-- Wait for TextChannels
 local TextChannels = TextChatService:WaitForChild("TextChannels")
 
--- Wait for RBXGeneral to exist
+-- Wait for RBXGeneral specifically
 local RBXGeneral = TextChannels:WaitForChild("RBXGeneral")
 
--- HOOK THE ACTUAL SENDASYNC METHOD BEFORE THE BOT LOADS
-local OriginalSendAsync = RBXGeneral.SendAsync
-
--- Replace it with our bypassed version
-RBXGeneral.SendAsync = function(self, message, ...)
-    if type(message) == "string" then
-        local converted = ConvertBypass(message)
-        print("[BYPASS] Original:", message)
-        print("[BYPASS] Converted:", converted)
-        return OriginalSendAsync(self, converted, ...)
-    end
-    return OriginalSendAsync(self, message, ...)
+-- Store the REAL original SendAsync before anything else touches it
+if not getgenv().OriginalSendAsync then
+    getgenv().OriginalSendAsync = RBXGeneral.SendAsync
 end
 
--- ALSO hook the metamethod as a backup
-local OldNamecall
-OldNamecall = hookmetamethod(game, "__namecall", function(Self, ...)
-    local Args = {...}
-    local Method = getnamecallmethod()
-    
-    if Method == "SendAsync" and Self:IsA("TextChannel") then
-        if type(Args[1]) == "string" then
-            Args[1] = ConvertBypass(Args[1])
-        end
+-- Replace SendAsync with our bypassed version
+RBXGeneral.SendAsync = newcclosure(function(self, message, ...)
+    if type(message) == "string" and getgenv().BypassEnabled then
+        local converted = ConvertBypass(message)
+        print("[BYPASS] Converting message...")
+        print("[BYPASS] Before:", message)
+        print("[BYPASS] After:", converted)
+        return getgenv().OriginalSendAsync(self, converted, ...)
     end
-    
-    return OldNamecall(Self, unpack(Args))
+    return getgenv().OriginalSendAsync(self, message, ...)
 end)
 
-print("[BYPASS] Loaded successfully - All messages will be bypassed")
+-- ALSO hook metamethod for extra protection
+pcall(function()
+    local mt = getrawmetatable(game)
+    local oldNamecall = mt.__namecall
+    
+    setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if method == "SendAsync" and self == RBXGeneral then
+            if type(args[1]) == "string" and getgenv().BypassEnabled then
+                args[1] = ConvertBypass(args[1])
+                print("[META BYPASS] Converted:", args[1])
+            end
+            return oldNamecall(self, unpack(args))
+        end
+        
+        return oldNamecall(self, ...)
+    end)
+    setreadonly(mt, true)
+end)
+
+wait(1) -- Give hooks time to settle
+
+print("[✓ BYPASS] Ready - All messages will be converted with special characters")
