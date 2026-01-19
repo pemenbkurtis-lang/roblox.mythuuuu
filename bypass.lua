@@ -36,55 +36,23 @@ local function ConvertBypass(Text)
     return table.concat(New, " ")
 end
 
--- Store in global environment so it persists
-getgenv().BypassEnabled = true
-
--- Wait for TextChannels
+-- Wait for services
 local TextChannels = TextChatService:WaitForChild("TextChannels")
-
--- Wait for RBXGeneral specifically
 local RBXGeneral = TextChannels:WaitForChild("RBXGeneral")
 
--- Store the REAL original SendAsync before anything else touches it
+-- Store original if not already stored
 if not getgenv().OriginalSendAsync then
     getgenv().OriginalSendAsync = RBXGeneral.SendAsync
 end
 
--- Replace SendAsync with our bypassed version
+-- Hook SendAsync
 RBXGeneral.SendAsync = newcclosure(function(self, message, ...)
-    if type(message) == "string" and getgenv().BypassEnabled then
+    if type(message) == "string" then
         local converted = ConvertBypass(message)
-        print("[BYPASS] Converting message...")
-        print("[BYPASS] Before:", message)
-        print("[BYPASS] After:", converted)
+        print("[BYPASS] " .. message .. " → " .. converted)
         return getgenv().OriginalSendAsync(self, converted, ...)
     end
     return getgenv().OriginalSendAsync(self, message, ...)
 end)
 
--- ALSO hook metamethod for extra protection
-pcall(function()
-    local mt = getrawmetatable(game)
-    local oldNamecall = mt.__namecall
-    
-    setreadonly(mt, false)
-    mt.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        if method == "SendAsync" and self == RBXGeneral then
-            if type(args[1]) == "string" and getgenv().BypassEnabled then
-                args[1] = ConvertBypass(args[1])
-                print("[META BYPASS] Converted:", args[1])
-            end
-            return oldNamecall(self, unpack(args))
-        end
-        
-        return oldNamecall(self, ...)
-    end)
-    setreadonly(mt, true)
-end)
-
-wait(1) -- Give hooks time to settle
-
-print("[✓ BYPASS] Ready - All messages will be converted with special characters")
+print("[✓] Chat bypass loaded successfully")
