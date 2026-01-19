@@ -1,17 +1,4 @@
-local TextChatService = game:GetService("TextChatService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
-
--- Configuration
-local SpecialCharacter = utf8.char(0x060D) -- The character used to break up text
-
-local function SendChatMessage(Message)
-    local Channel = TextChatService:FindFirstChild("RBXGeneral", true)
-    if Channel then
-        Channel:SendAsync(Message)
-    end
-end
-
+-- [[ UPDATED HOOK FOR SCRIPT-GENERATED MESSAGES ]] --
 local function utf8_chars(str)
     local chars = {}
     for _, c in utf8.codes(str) do
@@ -29,44 +16,33 @@ local function utf8_reverse(str)
     return table.concat(rev)
 end
 
--- The logic that reverses and injects invisible characters
+local Special = utf8.char(0x060D)
 local function ConvertBypass(Text)
     local Reverse = utf8_reverse(Text)
     local New = {}
-
     for Word in Reverse:gmatch("%S+") do
         local Letters = utf8_chars(Word)
-        local Fill = SpecialCharacter .. table.concat(Letters, SpecialCharacter)
+        local Fill = Special .. table.concat(Letters, Special)
         table.insert(New, Fill)
     end
-
     return table.concat(New, " ")
 end
 
--- Automatic Hook into the Chat Box
-local function InitializeBypass()
-    local ExpChat = CoreGui:WaitForChild("ExperienceChat", 10)
-    if not ExpChat then return end
+-- Hooking the actual internal Service instead of the TextBox
+local RawMetatable = getrawmetatable(game)
+local OldNamecall = RawMetatable.__namecall
+setreadonly(RawMetatable, false)
+RawMetatable.__namecall = newcclosure(function(Self, ...)
+    local Method = getnamecallmethod()
+    local Args = {...}
+    -- Check if a script is trying to call SendAsync on a TextChannel
+    if not checkcaller() and Method == "SendAsync" and Self.ClassName == "TextChannel" then
+        local OriginalMessage = Args[1]
+        Args[1] = ConvertBypass(OriginalMessage) -- Apply the bypass
+        return OldNamecall(Self, unpack(Args))
+    end
+    return OldNamecall(Self, ...)
+end)
+setreadonly(RawMetatable, true)
 
-    local Box = ExpChat:FindFirstChild("TextBox", true)
-    if not Box then return end
-
-    Box.MultiLine = true -- Allows for processing before sending
-
-    UserInputService.InputBegan:Connect(function(Input, Processed)
-        if Input.KeyCode == Enum.KeyCode.Return and Box:IsFocused() then
-            local RawText = Box.Text:gsub("%s+$", "")
-            
-            if RawText:match("%S") then
-                Box.Text = "" -- Clear the box
-                Box:ReleaseFocus()
-                
-                local ProcessedText = ConvertBypass(RawText)
-                SendChatMessage(ProcessedText)
-            end
-        end
-    end)
-end
-
--- Run immediately
-task.spawn(InitializeBypass)
+print("[Chat Bypass] Successfully loaded - All messages (bot & manual) will be bypassed")
