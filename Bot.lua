@@ -1,7 +1,3 @@
--- Optional config (set before running):
--- getgenv().BotConfig = { DefaultPhrases = {{"hi", "hello"}}, Interval = 12 }
--- getgenv().Blacklist = { blacklistt = {{123456789}} }
-
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
@@ -13,7 +9,7 @@ local pg = localplr:WaitForChild("PlayerGui")
 
 local REQUIRE_GLOBAL_TAB = false -- set true to skip sending unless Global tab is active
 local cfgInterval = getgenv().BotConfig and getgenv().BotConfig.Interval
-local INTERVAL = math.max(8, cfgInterval or 12)
+local INTERVAL = math.max(1, cfgInterval or 1)
 
 -- Remove a previous copy so loops don't stack
 local old = pg:FindFirstChild("botscript")
@@ -136,15 +132,29 @@ local function send(msg)
 	if REQUIRE_GLOBAL_TAB and inputCfg and inputCfg.TargetTextChannel ~= nil then
 		return false, "Global tab isn't selected"
 	end
+
 	local box = getBox()
 	if not box then return false, "Chat box not found" end
+
 	box:CaptureFocus()
+	task.wait(0.1)
 	box.Text = msg
-	task.wait(0.15)
+	task.wait(0.2)
+
+	-- Method 1: VirtualInputManager
 	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
 	task.wait(0.05)
 	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-	task.wait(0.1)
+	task.wait(0.3)
+
+	-- Fallback if the text is still in the box (Enter didn't register)
+	if box.Text == msg and keypress and keyrelease then
+		keypress(0x0D)
+		task.wait(0.05)
+		keyrelease(0x0D)
+		task.wait(0.3)
+	end
+
 	if box:IsFocused() then box:ReleaseFocus() end
 	return true
 end
