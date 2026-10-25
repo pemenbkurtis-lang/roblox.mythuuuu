@@ -128,8 +128,6 @@ local function getBox()
 	end
 end
 
-local RunService = game:GetService("RunService")
-
 local function send(msg)
 	if REQUIRE_GLOBAL_TAB and inputCfg and inputCfg.TargetTextChannel ~= nil then
 		return false, "Global tab isn't selected"
@@ -138,65 +136,26 @@ local function send(msg)
 	local box = getBox()
 	if not box then return false, "Chat box not found" end
 
-	local oldTransparency = box.TextTransparency
-	box.TextTransparency = 1 -- hide the pasted text
-
-	local submitted = false
-	local lock = box:GetPropertyChangedSignal("Text"):Connect(function()
-		-- undo any leaked keystrokes until the message is submitted
-		if not submitted and box.Text ~= msg then
-			box.Text = msg
-		end
-	end)
-
 	box:CaptureFocus()
-	box.Text = msg
-	RunService.Heartbeat:Wait() -- one frame so the text registers
-	box.Text = msg              -- re-assert in case a key slipped in
-
-	submitted = true
-	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-	task.wait(0.03)
-	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
 	task.wait(0.1)
+	box.Text = msg
+	task.wait(0.2)
 
-	-- fallback if Enter didn't register
+	-- Method 1: VirtualInputManager
+	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+	task.wait(0.05)
+	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+	task.wait(0.3)
+
+	-- Fallback if the text is still in the box (Enter didn't register)
 	if box.Text == msg and keypress and keyrelease then
 		keypress(0x0D)
-		task.wait(0.03)
+		task.wait(0.05)
 		keyrelease(0x0D)
-		task.wait(0.1)
+		task.wait(0.3)
 	end
 
-	lock:Disconnect()
-	if box.Text == msg then box.Text = "" end
 	if box:IsFocused() then box:ReleaseFocus() end
-	box.TextTransparency = oldTransparency
-	return true
-end
-
-	-- Method 2: keypress, with a short focus window
-	if not delivered then
-		box:CaptureFocus()
-		box.Text = msg
-		task.wait(0.08)
-		VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-		task.wait(0.03)
-		VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-		task.wait(0.1)
-
-		if box.Text == msg and keypress and keyrelease then
-			keypress(0x0D)
-			task.wait(0.03)
-			keyrelease(0x0D)
-			task.wait(0.1)
-		end
-	end
-
-	-- cleanup
-	if box.Text == msg then box.Text = "" end
-	if box:IsFocused() then box:ReleaseFocus() end
-	box.TextTransparency = oldTransparency
 	return true
 end
 
