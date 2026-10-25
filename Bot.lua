@@ -136,26 +136,42 @@ local function send(msg)
 	local box = getBox()
 	if not box then return false, "Chat box not found" end
 
-	box:CaptureFocus()
-	task.wait(0.1)
-	box.Text = msg
-	task.wait(0.2)
+	local oldTransparency = box.TextTransparency
+	box.TextTransparency = 1 -- hide the pasted text
 
-	-- Method 1: VirtualInputManager
-	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-	task.wait(0.05)
-	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-	task.wait(0.3)
+	local delivered = false
 
-	-- Fallback if the text is still in the box (Enter didn't register)
-	if box.Text == msg and keypress and keyrelease then
-		keypress(0x0D)
-		task.wait(0.05)
-		keyrelease(0x0D)
-		task.wait(0.3)
+	-- Method 1: no focus, so your movement keys can't leak into the box
+	if firesignal then
+		box.Text = msg
+		pcall(firesignal, box.FocusLost, true)
+		task.wait(0.1)
+		-- the chat clears the box after a successful send
+		delivered = (box.Text ~= msg)
 	end
 
+	-- Method 2: keypress, with a short focus window
+	if not delivered then
+		box:CaptureFocus()
+		box.Text = msg
+		task.wait(0.08)
+		VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+		task.wait(0.03)
+		VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+		task.wait(0.1)
+
+		if box.Text == msg and keypress and keyrelease then
+			keypress(0x0D)
+			task.wait(0.03)
+			keyrelease(0x0D)
+			task.wait(0.1)
+		end
+	end
+
+	-- cleanup
+	if box.Text == msg then box.Text = "" end
 	if box:IsFocused() then box:ReleaseFocus() end
+	box.TextTransparency = oldTransparency
 	return true
 end
 
