@@ -114,9 +114,30 @@ end
 if localplr.Character then task.spawn(hookCharacter, localplr.Character) end
 localplr.CharacterAdded:Connect(hookCharacter)
 
--- Sending through the chat box
+-- Sending without ever focusing the chat box
 local inputCfg = TextChatService:FindFirstChild("ChatInputBarConfiguration")
 local cachedBox
+local globalChannel
+
+local function isStandard(name)
+	return name == "RBXGeneral" or name == "RBXSystem" or name == "RBXTeam"
+		or name:sub(1, 10) == "RBXWhisper"
+end
+
+local function findHiddenChannel()
+	local pools = { TextChatService:GetDescendants() }
+	if getnilinstances then table.insert(pools, getnilinstances()) end
+	for _, pool in ipairs(pools) do
+		for _, v in ipairs(pool) do
+			if v:IsA("TextChannel") then
+				print("[bot] channel found:", v.Name, v:GetFullName())
+				if not isStandard(v.Name) and not globalChannel then
+					globalChannel = v
+				end
+			end
+		end
+	end
+end
 
 local function getBox()
 	if cachedBox and cachedBox.Parent then return cachedBox end
@@ -128,77 +149,49 @@ local function getBox()
 	end
 end
 
-local RunService = game:GetService("RunService")
+local function submitWithoutFocus(box)
+	if not getconnections then return false end
+	local fired = false
+	for _, c in ipairs(getconnections(box.FocusLost)) do
+		local ok = pcall(function()
+			if c.Fire then c:Fire(true) elseif c.Function then c.Function(true) end
+		end)
+		fired = fired or ok
+	end
+	return fired
+end
 
 local function send(msg)
 	if REQUIRE_GLOBAL_TAB and inputCfg and inputCfg.TargetTextChannel ~= nil then
 		return false, "Global tab isn't selected"
 	end
 
+	-- Method 1: hidden channel, direct send (same as the old bot)
+	if globalChannel then
+		local ok = pcall(function() globalChannel:SendAsync(msg) end)
+		if ok then return true end
+	end
+
+	-- Method 2: trigger the chat box's own submit handler, no focus
 	local box = getBox()
 	if not box then return false, "Chat box not found" end
 
 	local oldTransparency = box.TextTransparency
-	box.TextTransparency = 1 -- hide the pasted text
-
-	local submitted = false
-	local lock = box:GetPropertyChangedSignal("Text"):Connect(function()
-		-- undo any leaked keystrokes until the message is submitted
-		if not submitted and box.Text ~= msg then
-			box.Text = msg
-		end
-	end)
-
-	box:CaptureFocus()
+	box.TextTransparency = 1
 	box.Text = msg
-	RunService.Heartbeat:Wait() -- one frame so the text registers
-	box.Text = msg              -- re-assert in case a key slipped in
-
-	submitted = true
-	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-	task.wait(0.03)
-	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+	local fired = submitWithoutFocus(box)
 	task.wait(0.1)
-
-	-- fallback if Enter didn't register
-	if box.Text == msg and keypress and keyrelease then
-		keypress(0x0D)
-		task.wait(0.03)
-		keyrelease(0x0D)
-		task.wait(0.1)
-	end
-
-	lock:Disconnect()
+	local delivered = fired and box.Text ~= msg
 	if box.Text == msg then box.Text = "" end
-	if box:IsFocused() then box:ReleaseFocus() end
 	box.TextTransparency = oldTransparency
-	return true
+
+	if delivered then return true end
+	return false, "Couldn't submit without focus (getconnections: " .. tostring(getconnections ~= nil) .. ")"
 end
 
-	-- Method 2: keypress, with a short focus window
-	if not delivered then
-		box:CaptureFocus()
-		box.Text = msg
-		task.wait(0.08)
-		VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-		task.wait(0.03)
-		VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-		task.wait(0.1)
-
-		if box.Text == msg and keypress and keyrelease then
-			keypress(0x0D)
-			task.wait(0.03)
-			keyrelease(0x0D)
-			task.wait(0.1)
-		end
-	end
-
-	-- cleanup
-	if box.Text == msg then box.Text = "" end
-	if box:IsFocused() then box:ReleaseFocus() end
-	box.TextTransparency = oldTransparency
-	return true
-end
+findHiddenChannel()
+print("[bot] hidden channel:", globalChannel and globalChannel.Name or "none",
+	"| getconnections:", getconnections ~= nil, "| getnilinstances:", getnilinstances ~= nil)
 
 -- Main loop
 resetPhrases()
