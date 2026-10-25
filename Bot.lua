@@ -132,7 +132,42 @@ local function BLQRFBV_fake_script() -- botscript.BotMain
 	local enabled = true
 	local StarterGui = game:GetService("StarterGui")
 	local chatservice = game:GetService("TextChatService")
-	local textChannel = chatservice:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
+local channelsFolder = chatservice:WaitForChild("TextChannels")
+
+local function isStandard(name)
+    return name == "RBXGeneral" or name == "RBXSystem" or name == "RBXTeam"
+        or name:sub(1, 10) == "RBXWhisper"
+end
+
+local function findGlobal()
+    for _, ch in ipairs(channelsFolder:GetChildren()) do
+        if ch:IsA("TextChannel") and ch.Name:lower():find("global") then
+            return ch
+        end
+    end
+    for _, ch in ipairs(channelsFolder:GetChildren()) do
+        if ch:IsA("TextChannel") and not isStandard(ch.Name) then
+            return ch
+        end
+    end
+end
+
+local textChannel
+for _ = 1, 15 do
+    textChannel = findGlobal()
+    if textChannel then break end
+    task.wait(1)
+end
+
+if textChannel then
+    print("Using channel:", textChannel.Name)
+else
+    warn("No global channel found. Available channels:")
+    for _, ch in ipairs(channelsFolder:GetChildren()) do
+        print(" -", ch.Name, ch.ClassName)
+    end
+    return
+end
 	local startbutton = script.Parent:WaitForChild("StartButton")
 	local stopbutton = script.Parent:WaitForChild("StopButton")
 	local addphrase = script.Parent:WaitForChild("AddPhrase")
