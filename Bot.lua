@@ -114,27 +114,9 @@ end
 if localplr.Character then task.spawn(hookCharacter, localplr.Character) end
 localplr.CharacterAdded:Connect(hookCharacter)
 
--- Sending through the chat box (waits for idle keys, minimal focus time)
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-
+-- Sending through the chat box
 local inputCfg = TextChatService:FindFirstChild("ChatInputBarConfiguration")
 local cachedBox
-
-local WATCH_KEYS = {
-	Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D,
-	Enum.KeyCode.Space, Enum.KeyCode.LeftShift, Enum.KeyCode.E,
-	Enum.KeyCode.Q, Enum.KeyCode.R, Enum.KeyCode.F,
-	Enum.KeyCode.Up, Enum.KeyCode.Down, Enum.KeyCode.Left, Enum.KeyCode.Right,
-}
-
-local function keysHeld()
-	if UserInputService:GetFocusedTextBox() then return true end
-	for _, k in ipairs(WATCH_KEYS) do
-		if UserInputService:IsKeyDown(k) then return true end
-	end
-	return false
-end
 
 local function getBox()
 	if cachedBox and cachedBox.Parent then return cachedBox end
@@ -146,6 +128,8 @@ local function getBox()
 	end
 end
 
+local RunService = game:GetService("RunService")
+
 local function send(msg)
 	if REQUIRE_GLOBAL_TAB and inputCfg and inputCfg.TargetTextChannel ~= nil then
 		return false, "Global tab isn't selected"
@@ -154,19 +138,12 @@ local function send(msg)
 	local box = getBox()
 	if not box then return false, "Chat box not found" end
 
-	-- wait (up to 5s) for a moment when no movement keys are held
-	local waited = 0
-	while keysHeld() and waited < 5 do
-		task.wait(0.05)
-		waited += 0.05
-	end
-	if keysHeld() then return false, "Keys held too long, skipped" end
-
 	local oldTransparency = box.TextTransparency
-	box.TextTransparency = 1
+	box.TextTransparency = 1 -- hide the pasted text
 
 	local submitted = false
 	local lock = box:GetPropertyChangedSignal("Text"):Connect(function()
+		-- undo any leaked keystrokes until the message is submitted
 		if not submitted and box.Text ~= msg then
 			box.Text = msg
 		end
@@ -174,23 +151,49 @@ local function send(msg)
 
 	box:CaptureFocus()
 	box.Text = msg
-	RunService.Heartbeat:Wait()
-	box.Text = msg
+	RunService.Heartbeat:Wait() -- one frame so the text registers
+	box.Text = msg              -- re-assert in case a key slipped in
 
 	submitted = true
 	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
 	task.wait(0.03)
 	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-	task.wait(0.08)
+	task.wait(0.1)
 
+	-- fallback if Enter didn't register
 	if box.Text == msg and keypress and keyrelease then
 		keypress(0x0D)
 		task.wait(0.03)
 		keyrelease(0x0D)
-		task.wait(0.08)
+		task.wait(0.1)
 	end
 
 	lock:Disconnect()
+	if box.Text == msg then box.Text = "" end
+	if box:IsFocused() then box:ReleaseFocus() end
+	box.TextTransparency = oldTransparency
+	return true
+end
+
+	-- Method 2: keypress, with a short focus window
+	if not delivered then
+		box:CaptureFocus()
+		box.Text = msg
+		task.wait(0.08)
+		VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+		task.wait(0.03)
+		VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+		task.wait(0.1)
+
+		if box.Text == msg and keypress and keyrelease then
+			keypress(0x0D)
+			task.wait(0.03)
+			keyrelease(0x0D)
+			task.wait(0.1)
+		end
+	end
+
+	-- cleanup
 	if box.Text == msg then box.Text = "" end
 	if box:IsFocused() then box:ReleaseFocus() end
 	box.TextTransparency = oldTransparency
