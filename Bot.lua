@@ -8,8 +8,13 @@ local localplr = Players.LocalPlayer
 local pg = localplr:WaitForChild("PlayerGui")
 
 local REQUIRE_GLOBAL_TAB = false -- set true to skip sending unless Global tab is active
-local cfgInterval = getgenv().BotConfig and getgenv().BotConfig.Interval
-local INTERVAL = math.max(1, cfgInterval or 1)
+
+local MIN_INTERVAL = 1 -- lowest allowed delay in seconds
+local function getInterval()
+	local cfg = getgenv().BotConfig
+	local v = cfg and tonumber(cfg.Interval) or 1
+	return math.max(MIN_INTERVAL, v)
+end
 
 -- Remove a previous copy so loops don't stack
 local old = pg:FindFirstChild("botscript")
@@ -161,12 +166,12 @@ end
 
 -- Main loop
 resetPhrases()
-print("[bot] loaded. phrases:", #phrases, "interval:", INTERVAL)
+print("[bot] loaded. phrases:", #phrases, "interval:", getInterval())
 
 local lastReason = ""
 task.spawn(function()
 	while gui.Parent do
-		task.wait(INTERVAL)
+		task.wait(getInterval())
 		if enabled then
 			local msg = nextPhrase()
 			if msg then
