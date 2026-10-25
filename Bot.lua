@@ -1,4 +1,4 @@
--- Config (optional, set before running):
+-- Optional config (set before running):
 -- getgenv().BotConfig = { DefaultPhrases = {{"hi", "hello"}}, Interval = 12 }
 -- getgenv().Blacklist = { blacklistt = {{123456789}} }
 
@@ -9,16 +9,16 @@ local TextChatService = game:GetService("TextChatService")
 local VIM = game:GetService("VirtualInputManager")
 
 local localplr = Players.LocalPlayer
-local REQUIRE_GLOBAL_TAB = true -- only send when the Global tab is active
-local MIN_INTERVAL = 8
-local INTERVAL = math.max(MIN_INTERVAL, (getgenv().BotConfig and getgenv().BotConfig.Interval) or 12)
-
--- Remove any previous copy so loops don't stack
 local pg = localplr:WaitForChild("PlayerGui")
+
+local REQUIRE_GLOBAL_TAB = false -- set true to skip sending unless Global tab is active
+local cfgInterval = getgenv().BotConfig and getgenv().BotConfig.Interval
+local INTERVAL = math.max(8, cfgInterval or 12)
+
+-- Remove a previous copy so loops don't stack
 local old = pg:FindFirstChild("botscript")
 if old then old:Destroy() end
 
--- State
 local enabled = true
 local phrases, bag, blacklisted = {}, {}, {}
 
@@ -39,7 +39,6 @@ local function resetPhrases()
 	end
 end
 
--- Shuffle-bag: cycles through every phrase before repeating
 local function nextPhrase()
 	if #phrases == 0 then return nil end
 	if #bag == 0 then
@@ -94,13 +93,12 @@ end)
 clearBtn.MouseButton1Up:Connect(function() table.clear(phrases) table.clear(bag) end)
 resetBtn.MouseButton1Up:Connect(resetPhrases)
 
--- Blacklist: event-based instead of polling every 0.1s
+-- Blacklist (event-based)
 local function checkBlacklist(plr)
 	if table.find(blacklisted, plr.UserId) then
 		localplr:Kick("You cannot be in a server with this person")
 	end
 end
-
 local bl = getgenv().Blacklist
 if bl and bl.blacklistt and bl.blacklistt[1] then
 	for _, id in ipairs(bl.blacklistt[1]) do table.insert(blacklisted, id) end
@@ -108,7 +106,7 @@ end
 Players.PlayerAdded:Connect(checkBlacklist)
 for _, p in ipairs(Players:GetPlayers()) do checkBlacklist(p) end
 
--- Auto-unsit: event-based instead of polling
+-- Auto-unsit (event-based)
 local function hookCharacter(char)
 	local hum = char:WaitForChild("Humanoid", 10)
 	if not hum then return end
@@ -120,7 +118,7 @@ end
 if localplr.Character then task.spawn(hookCharacter, localplr.Character) end
 localplr.CharacterAdded:Connect(hookCharacter)
 
--- Chat box sending
+-- Sending through the chat box
 local inputCfg = TextChatService:FindFirstChild("ChatInputBarConfiguration")
 local cachedBox
 
@@ -153,17 +151,25 @@ end
 
 -- Main loop
 resetPhrases()
-local lastWarn = ""
-while gui.Parent do
-	task.wait(INTERVAL)
-	if enabled then
-		local msg = nextPhrase()
-		if msg then
-			local ok, sent, reason = pcall(send, msg)
-			if not ok then
-				warn("Send error:", sent)
-			elseif not sent and reason ~= lastWarn then
-				lastWarn = reason
-				notify("Not sent", reason)
+print("[bot] loaded. phrases:", #phrases, "interval:", INTERVAL)
+
+local lastReason = ""
+task.spawn(function()
+	while gui.Parent do
+		task.wait(INTERVAL)
+		if enabled then
+			local msg = nextPhrase()
+			if msg then
+				local ok, sent, reason = pcall(send, msg)
+				if not ok then
+					warn("[bot] error:", sent)
+				elseif sent then
+					print("[bot] sent:", msg)
+				elseif reason ~= lastReason then
+					lastReason = reason
+					notify("Not sent", tostring(reason))
+				end
 			end
 		end
+	end
+end)
