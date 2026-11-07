@@ -1,190 +1,235 @@
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
-local TextChatService = game:GetService("TextChatService")
-local VIM = game:GetService("VirtualInputManager")
+-- Gui to Lua
+-- Version: 3.2
 
-local localplr = Players.LocalPlayer
-local pg = localplr:WaitForChild("PlayerGui")
+-- Instances:
 
-local REQUIRE_GLOBAL_TAB = false -- set true to skip sending unless Global tab is active
+local botscript = Instance.new("ScreenGui")
+local StartButton = Instance.new("TextButton")
+local UICorner = Instance.new("UICorner")
+local StopButton = Instance.new("TextButton")
+local UICorner_2 = Instance.new("UICorner")
+local PhraseBox = Instance.new("TextBox")
+local UICorner_3 = Instance.new("UICorner")
+local AddPhrase = Instance.new("TextButton")
+local UICorner_4 = Instance.new("UICorner")
+local ClearPhrases = Instance.new("TextButton")
+local UICorner_5 = Instance.new("UICorner")
+local ResetPhrases = Instance.new("TextButton")
+local UICorner_6 = Instance.new("UICorner")
 
-local MIN_INTERVAL = 1 -- lowest allowed delay in seconds
-local function getInterval()
-	local cfg = getgenv().BotConfig
-	local v = cfg and tonumber(cfg.Interval) or 1
-	return math.max(MIN_INTERVAL, v)
-end
+--Properties:
 
--- Remove a previous copy so loops don't stack
-local old = pg:FindFirstChild("botscript")
-if old then old:Destroy() end
+botscript.Name = "botscript"
+botscript.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+botscript.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+botscript.ResetOnSpawn = false
 
-local enabled = true
-local phrases, bag, blacklisted = {}, {}, {}
+StartButton.Name = "StartButton"
+StartButton.Parent = botscript
+StartButton.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
+StartButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+StartButton.BorderSizePixel = 0
+StartButton.Position = UDim2.new(0.83725363, 0, 0.271175236, 0)
+StartButton.Size = UDim2.new(0, 200, 0, 50)
+StartButton.Font = Enum.Font.Cartoon
+StartButton.Text = "Start"
+StartButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartButton.TextScaled = true
+StartButton.TextSize = 14.000
+StartButton.TextWrapped = true
 
-local function notify(title, text)
-	pcall(function()
-		StarterGui:SetCore("SendNotification", {Title = title, Text = text, Duration = 3})
+UICorner.Parent = StartButton
+
+StopButton.Name = "StopButton"
+StopButton.Parent = botscript
+StopButton.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
+StopButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+StopButton.BorderSizePixel = 0
+StopButton.Position = UDim2.new(0.83725363, 0, 0.363767833, 0)
+StopButton.Size = UDim2.new(0, 200, 0, 50)
+StopButton.Font = Enum.Font.Cartoon
+StopButton.Text = "Stop"
+StopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+StopButton.TextScaled = true
+StopButton.TextSize = 14.000
+StopButton.TextWrapped = true
+
+UICorner_2.Parent = StopButton
+
+PhraseBox.Name = "PhraseBox"
+PhraseBox.Parent = botscript
+PhraseBox.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
+PhraseBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
+PhraseBox.BorderSizePixel = 0
+PhraseBox.Position = UDim2.new(0.83725363, 0, 0.501685143, 0)
+PhraseBox.Size = UDim2.new(0, 200, 0, 88)
+PhraseBox.ClearTextOnFocus = false
+PhraseBox.Font = Enum.Font.Cartoon
+PhraseBox.MultiLine = true
+PhraseBox.PlaceholderColor3 = Color3.fromRGB(184, 184, 184)
+PhraseBox.PlaceholderText = "Write phrases to add here"
+PhraseBox.Text = ""
+PhraseBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+PhraseBox.TextScaled = true
+PhraseBox.TextSize = 14.000
+PhraseBox.TextWrapped = true
+
+UICorner_3.Parent = PhraseBox
+
+AddPhrase.Name = "AddPhrase"
+AddPhrase.Parent = botscript
+AddPhrase.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
+AddPhrase.BorderColor3 = Color3.fromRGB(0, 0, 0)
+AddPhrase.BorderSizePixel = 0
+AddPhrase.Position = UDim2.new(0.83725363, 0, 0.626617968, 0)
+AddPhrase.Size = UDim2.new(0, 94, 0, 30)
+AddPhrase.Font = Enum.Font.Cartoon
+AddPhrase.Text = "Add Phrase"
+AddPhrase.TextColor3 = Color3.fromRGB(255, 255, 255)
+AddPhrase.TextScaled = true
+AddPhrase.TextSize = 14.000
+AddPhrase.TextWrapped = true
+
+UICorner_4.Parent = AddPhrase
+
+ClearPhrases.Name = "ClearPhrases"
+ClearPhrases.Parent = botscript
+ClearPhrases.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
+ClearPhrases.BorderColor3 = Color3.fromRGB(0, 0, 0)
+ClearPhrases.BorderSizePixel = 0
+ClearPhrases.Position = UDim2.new(0.892624021, 0, 0.626617968, 0)
+ClearPhrases.Size = UDim2.new(0, 94, 0, 30)
+ClearPhrases.Font = Enum.Font.Cartoon
+ClearPhrases.Text = "Clear Phrases"
+ClearPhrases.TextColor3 = Color3.fromRGB(255, 255, 255)
+ClearPhrases.TextScaled = true
+ClearPhrases.TextSize = 14.000
+ClearPhrases.TextWrapped = true
+
+UICorner_5.Parent = ClearPhrases
+
+ResetPhrases.Name = "ResetPhrases"
+ResetPhrases.Parent = botscript
+ResetPhrases.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
+ResetPhrases.BorderColor3 = Color3.fromRGB(0, 0, 0)
+ResetPhrases.BorderSizePixel = 0
+ResetPhrases.Position = UDim2.new(0.83725363, 0, 0.678676069, 0)
+ResetPhrases.Size = UDim2.new(0, 200, 0, 40)
+ResetPhrases.Font = Enum.Font.Cartoon
+ResetPhrases.Text = "Reset Phrases"
+ResetPhrases.TextColor3 = Color3.fromRGB(255, 255, 255)
+ResetPhrases.TextScaled = true
+ResetPhrases.TextSize = 14.000
+ResetPhrases.TextWrapped = true
+
+UICorner_6.Parent = ResetPhrases
+
+-- Scripts:
+
+local function BLQRFBV_fake_script() -- botscript.BotMain
+	local script = Instance.new('LocalScript', botscript)
+
+	local enabled = true
+	local StarterGui = game:GetService("StarterGui")
+	local chatservice = game:GetService("TextChatService")
+	local textChannel = chatservice:WaitForChild("TextChannels"):WaitForChild("RBXGeneral")
+	local startbutton = script.Parent:WaitForChild("StartButton")
+	local stopbutton = script.Parent:WaitForChild("StopButton")
+	local addphrase = script.Parent:WaitForChild("AddPhrase")
+	local clearphrases = script.Parent:WaitForChild("ClearPhrases")
+	local phrasebox = script.Parent:WaitForChild("PhraseBox")
+	local resetphrases = script.Parent:WaitForChild("ResetPhrases")
+	local Playerservice = game:GetService("Players")
+	local phrases = {}
+	local blacklisted = {}
+	local localplr = Playerservice.LocalPlayer
+	
+	local function resettable()
+		phrases = {}
+		if getgenv().BotConfig and getgenv().BotConfig.DefaultPhrases then
+			for i,v in ipairs(getgenv().BotConfig.DefaultPhrases[1]) do
+				table.insert(phrases,v)
+			end
+		end
+	end
+	
+	game.Players.PlayerAdded:Connect(function(plr)
+		for i,v in pairs(blacklisted) do
+			if plr.UserId == v then
+				localplr:Kick("You cannot be in a server with this person")
+			end
+		end
 	end)
-end
-
-local function resetPhrases()
-	table.clear(phrases)
-	table.clear(bag)
-	local cfg = getgenv().BotConfig
-	if cfg and cfg.DefaultPhrases and cfg.DefaultPhrases[1] then
-		for _, v in ipairs(cfg.DefaultPhrases[1]) do
-			table.insert(phrases, v)
-		end
-	end
-end
-
-local function nextPhrase()
-	if #phrases == 0 then return nil end
-	if #bag == 0 then
-		for i, v in ipairs(phrases) do bag[i] = v end
-		for i = #bag, 2, -1 do
-			local j = math.random(i)
-			bag[i], bag[j] = bag[j], bag[i]
-		end
-	end
-	return table.remove(bag)
-end
-
--- GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "botscript"
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = pg
-
-local function make(class, props)
-	local o = Instance.new(class)
-	o.BackgroundColor3 = Color3.fromRGB(245, 139, 87)
-	o.BorderSizePixel = 0
-	o.Font = Enum.Font.Cartoon
-	o.TextColor3 = Color3.fromRGB(255, 255, 255)
-	o.TextScaled = true
-	o.TextWrapped = true
-	for k, v in pairs(props) do o[k] = v end
-	Instance.new("UICorner").Parent = o
-	o.Parent = gui
-	return o
-end
-
-local X = 0.83725363
-local startBtn = make("TextButton", {Name = "StartButton", Text = "Start", Position = UDim2.new(X, 0, 0.2712, 0), Size = UDim2.new(0, 200, 0, 50)})
-local stopBtn = make("TextButton", {Name = "StopButton", Text = "Stop", Position = UDim2.new(X, 0, 0.3638, 0), Size = UDim2.new(0, 200, 0, 50)})
-local phraseBox = make("TextBox", {Name = "PhraseBox", Text = "", PlaceholderText = "Write phrases to add here", PlaceholderColor3 = Color3.fromRGB(184, 184, 184), ClearTextOnFocus = false, MultiLine = true, Position = UDim2.new(X, 0, 0.5017, 0), Size = UDim2.new(0, 200, 0, 88)})
-local addBtn = make("TextButton", {Name = "AddPhrase", Text = "Add Phrase", Position = UDim2.new(X, 0, 0.6266, 0), Size = UDim2.new(0, 94, 0, 30)})
-local clearBtn = make("TextButton", {Name = "ClearPhrases", Text = "Clear Phrases", Position = UDim2.new(0.8926, 0, 0.6266, 0), Size = UDim2.new(0, 94, 0, 30)})
-local resetBtn = make("TextButton", {Name = "ResetPhrases", Text = "Reset Phrases", Position = UDim2.new(X, 0, 0.6787, 0), Size = UDim2.new(0, 200, 0, 40)})
-
-startBtn.MouseButton1Up:Connect(function() enabled = true notify("Enabled", "Bot started") end)
-stopBtn.MouseButton1Up:Connect(function() enabled = false notify("Disabled", "Bot stopped") end)
-addBtn.MouseButton1Up:Connect(function()
-	local text = phraseBox.Text:match("^%s*(.-)%s*$")
-	if text ~= "" then
-		table.insert(phrases, text)
-		table.clear(bag)
-		notify("Added", text)
-	end
-end)
-clearBtn.MouseButton1Up:Connect(function() table.clear(phrases) table.clear(bag) end)
-resetBtn.MouseButton1Up:Connect(resetPhrases)
-
--- Blacklist (event-based)
-local function checkBlacklist(plr)
-	if table.find(blacklisted, plr.UserId) then
-		localplr:Kick("You cannot be in a server with this person")
-	end
-end
-local bl = getgenv().Blacklist
-if bl and bl.blacklistt and bl.blacklistt[1] then
-	for _, id in ipairs(bl.blacklistt[1]) do table.insert(blacklisted, id) end
-end
-Players.PlayerAdded:Connect(checkBlacklist)
-for _, p in ipairs(Players:GetPlayers()) do checkBlacklist(p) end
-
--- Auto-unsit (event-based)
-local function hookCharacter(char)
-	local hum = char:WaitForChild("Humanoid", 10)
-	if not hum then return end
-	if hum.Sit then hum.Sit = false end
-	hum:GetPropertyChangedSignal("Sit"):Connect(function()
-		if hum.Sit then hum.Sit = false end
-	end)
-end
-if localplr.Character then task.spawn(hookCharacter, localplr.Character) end
-localplr.CharacterAdded:Connect(hookCharacter)
-
--- Sending through the chat box
-local inputCfg = TextChatService:FindFirstChild("ChatInputBarConfiguration")
-local cachedBox
-
-local function getBox()
-	if cachedBox and cachedBox.Parent then return cachedBox end
-	for _, v in ipairs(CoreGui:GetDescendants()) do
-		if v:IsA("TextBox") and (v:FindFirstAncestor("chatInputBar") or v:FindFirstAncestor("ChatInputBar")) then
-			cachedBox = v
-			return v
-		end
-	end
-end
-
-local function send(msg)
-	if REQUIRE_GLOBAL_TAB and inputCfg and inputCfg.TargetTextChannel ~= nil then
-		return false, "Global tab isn't selected"
-	end
-
-	local box = getBox()
-	if not box then return false, "Chat box not found" end
-
-	box:CaptureFocus()
-	task.wait(0.1)
-	box.Text = msg
-	task.wait(0.2)
-
-	-- Method 1: VirtualInputManager
-	VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-	task.wait(0.05)
-	VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-	task.wait(0.3)
-
-	-- Fallback if the text is still in the box (Enter didn't register)
-	if box.Text == msg and keypress and keyrelease then
-		keypress(0x0D)
-		task.wait(0.05)
-		keyrelease(0x0D)
-		task.wait(0.3)
-	end
-
-	if box:IsFocused() then box:ReleaseFocus() end
-	return true
-end
-
--- Main loop
-resetPhrases()
-print("[bot] loaded. phrases:", #phrases, "interval:", getInterval())
-
-local lastReason = ""
-task.spawn(function()
-	while gui.Parent do
-		task.wait(getInterval())
-		if enabled then
-			local msg = nextPhrase()
-			if msg then
-				local ok, sent, reason = pcall(send, msg)
-				if not ok then
-					warn("[bot] error:", sent)
-				elseif sent then
-					print("[bot] sent:", msg)
-				elseif reason ~= lastReason then
-					lastReason = reason
-					notify("Not sent", tostring(reason))
+	
+	local function scanserver()
+		while task.wait(0.1) do
+			for i,v in pairs(Playerservice:GetPlayers()) do
+				if #blacklisted > 0 then
+					for i,userids in ipairs(blacklisted) do
+						if v.UserId == userids then
+							localplr:Kick("You cannot be in a server with this person")
+						end
+					end
 				end
 			end
 		end
 	end
-end)
+	
+	local function refbblacklist()
+		if getgenv().Blacklist and getgenv().Blacklist.blacklistt then
+			for i,v in ipairs(getgenv().Blacklist.blacklistt[1]) do
+				table.insert(blacklisted,v)
+			end
+		end
+	end
+	
+	task.spawn(refbblacklist)
+	task.spawn(scanserver)
+	task.spawn(resettable)
+	
+	local function onandoff()
+		startbutton.MouseButton1Up:Connect(function()
+			enabled = true
+			StarterGui:SetCore("SendNotification", {Title = "Enabled", Text = "Bot started", Duration = 3})
+		end)
+		stopbutton.MouseButton1Up:Connect(function()
+			enabled = false
+			StarterGui:SetCore("SendNotification", {Title = "Disabled", Text = "Bot stopped", Duration = 3})
+		end)
+		addphrase.MouseButton1Up:Connect(function()
+			table.insert(phrases, phrasebox.Text)
+			StarterGui:SetCore("SendNotification", {Title = "Added", Text = phrasebox.Text, Duration = 3})
+		end)
+		clearphrases.MouseButton1Up:Connect(function()
+			table.clear(phrases)
+		end)
+		resetphrases.MouseButton1Up:Connect(function()
+			table.clear(phrases)
+			task.spawn(resettable)
+		end)
+	end
+	
+	task.spawn(onandoff)
+	
+	local function unsit()
+		while task.wait(0.1) do
+			if localplr.Character and localplr.Character:FindFirstChildOfClass("Humanoid") then
+				local hum = localplr.Character:FindFirstChildOfClass("Humanoid")
+				if hum.Sit then
+					hum.Sit = false
+				end
+			end
+		end
+	end
+	
+	task.spawn(unsit)
+	
+	while task.wait(3) do
+		if enabled == true then
+			if #phrases > 0 then
+				textChannel:SendAsync(phrases[math.random(1,#phrases)])
+			end
+		end
+	end
+end
+coroutine.wrap(BLQRFBV_fake_script)()
