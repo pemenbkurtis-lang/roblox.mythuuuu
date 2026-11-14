@@ -1,0 +1,39 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local localPlayer = Players.LocalPlayer
+local enabled = true
+
+local function startMovement(character)
+	local root = character:WaitForChild("HumanoidRootPart", 5)
+	if not root then return end
+
+	while task.wait(3) do
+		if enabled and root.Parent and localPlayer.Character then
+			local targets = {}
+
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player ~= localPlayer then
+					local otherRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					if otherRoot and otherRoot:IsA("BasePart") then
+						table.insert(targets, otherRoot)
+					end
+				end
+			end
+
+			if #targets > 0 then
+				TweenService:Create(
+					root,
+					TweenInfo.new(1.7, Enum.EasingStyle.Linear),
+					{CFrame = targets[math.random(1, #targets)].CFrame}
+				):Play()
+			end
+		end
+	end
+end
+
+localPlayer.CharacterAdded:Connect(startMovement)
+
+if localPlayer.Character then
+	task.spawn(startMovement, localPlayer.Character)
+end
